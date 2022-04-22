@@ -1,6 +1,7 @@
 #include <Servo.h>
 
 #define SERVO 12
+
 Servo myServo;
 
 void setup() {
