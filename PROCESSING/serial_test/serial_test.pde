@@ -10,16 +10,17 @@ void setup(){
 }
 
 void draw(){
-  while(sPort.available() <= 0);
+  if(sPort.available() > 0){
+    sPort.read();
   
-    if(val > 180)
-      val = 0;
-    
-    delay(500);
-    sPort.write(val);
-    val += 20;
-    
-    char msg = (char) sPort.read();
-    print(msg);
-  
+    if(val == 0){
+      sPort.write("DRAW");
+      val++;
+      delay(2000);
+    }
+    else if(val == 1){
+      sPort.write("DONE");
+      val++;
+    }
+  }
 }
