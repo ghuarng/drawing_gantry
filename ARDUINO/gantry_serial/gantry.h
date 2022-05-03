@@ -14,6 +14,8 @@
 #define DOWN  146
 #define DONE  90
 
+void handlePenInstr(byte buffer[]);
+void handleStepperInstr(byte buffer[]);
 void penDown();
 void penUp();
 void moveX();

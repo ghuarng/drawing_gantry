@@ -4,8 +4,7 @@ Serial sPort;
 char val;
 
 void setup(){
-  String portName = Serial.list()[0]; 
-  sPort = new Serial(this, portName, 9600);
+  sPort = new Serial(this, "COM5", 9600);
   val = 0;
 }
 

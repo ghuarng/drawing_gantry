@@ -12,6 +12,7 @@ int offsetX = 0;
 int offsetY = 0;
 char idle = 1;
 byte buffer[5] = {0};
+byte testBuffer[2] = {0x02, 0x37};
 
 void setup() {
   Serial.begin(9600);
@@ -21,14 +22,16 @@ void setup() {
   stepperY.begin(200,1);
 
   penServo.attach(SERVO);
+  Serial.println(int(testBuffer));
 }
 
 void loop() {
+  //IDLE STATE -- WAIT FOR NEW DRAWING
   if(idle == 1){
     delay(10);
     
     if(Serial.available() > 0){
-      Serial.readBytes(buffer, 5);
+      Serial.readBytes(buffer, 4);
      
       if(strcmp(buffer, "DRAW") == 0){
         sendGantryToDraw();
@@ -36,25 +39,67 @@ void loop() {
       }
     }
   }
-  
+
+  //ACTIVE STATE -- DRAWING IMAGE
   else{
     if(Serial.available() > 0){
-      Serial.readBytes(buffer, 5);
-     
+      //Read instruction into buffer
+      Serial.readBytes(buffer, 4);
+
+      //Drawing finished
       if(strcmp(buffer, "DONE") == 0){
         sendGantryToOrigin();
         idle = 1;
       }
-      //else
-        //if Pen
-          //if up,down
-          
-        //if Stepper
-          //if up, down, left, right 
+
+      //Pen servo
+      else if(buffer[0] == 'P'){
+        handlePenInstr(buffer);
+      }
+
+      //Stepper motor
+      else if(buffer[0] == 'S'){
+        handleStepperInstr(buffer);
+      }
     }
   }
 
   Serial.print('+'); //ready for next instruction
+}
+
+void handlePenInstr(byte buffer[]){
+  //Pen up
+  if(buffer[1] == 'U'){
+    penUp();
+  }
+  else if(buffer[1] == 'D'){
+    penDown();
+  }
+}
+
+void handleStepperInstr(byte buffer[]){
+  //steps to take
+  unsigned int steps = 0;
+  steps ^= buffer[3];
+  steps ^= (buffer[2] << 8);
+
+  char dir = char(buffer[1]);
+  switch(dir){
+    case 'U': //up
+      moveY(-steps);
+      break;
+    case 'D': //down
+      moveY(steps);
+      break;
+    case 'L': //left
+      moveX(-200);
+      //penServo.write(90);
+      break;
+    case 'R': //right
+      moveX(200);
+      //penServo.write(180);
+      break;
+  }
 }
 
 void penDown(){
