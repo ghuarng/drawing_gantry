@@ -1,5 +1,5 @@
 #define MOTOR_STEPS 200 //1.8 deg/step; Each rotation ~2cm
-#define STEPPER_FAST 500 //rpm
+#define STEPPER_FAST 300 //rpm
 #define STEPPER_SLOW 200 //rpm
 
 //X Motor (+ RIGHT, - LEFT)
@@ -12,7 +12,7 @@
 
 //Servo 
 #define SERVO 2
-#define UP    153 //servo angles
+#define UP    150 //servo angles
 #define DOWN  157
 #define DONE  90
 

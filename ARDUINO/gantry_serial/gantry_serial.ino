@@ -29,9 +29,7 @@ void setup() {
 void loop() {
   //IDLE STATE -- WAIT FOR NEW DRAWING
   if(idle == 1){
-    delay(10);
-    
-    if(Serial.available() > 0){
+    if(Serial.available() >= 4){
       Serial.readBytes(buffer, 4);
      
       if(strcmp(buffer, "DRAW") == 0){
@@ -43,7 +41,7 @@ void loop() {
 
   //ACTIVE STATE -- DRAWING IMAGE
   else{
-    if(Serial.available() > 0){
+    if(Serial.available() >= 4){
       //Read instruction into buffer
       Serial.readBytes(buffer, 4);
 
@@ -74,7 +72,7 @@ void loop() {
       }
     }
   }
-
+  delay(1);
   Serial.print('+'); //ready for next instruction
 }
 
@@ -114,24 +112,24 @@ void handleStepperInstr(byte buffer[]){
 void penDown(){
   penServo.write(DOWN);
   stepperX.setRPM(200);
-  delay(300);
+  delay(100);
 }
 
 void penUp(){
   penServo.write(UP);
-  delay(300);
+  delay(100);
 }
 
 void moveX(int steps){
   stepperX.move(steps);
   offsetX += steps;
-  delay(200);
+  delay(50);
 }
 
 void moveY(int steps){
   stepperY.move(steps);
   offsetY += steps;
-  delay(200);
+  delay(50);
 }
 
 void drawBlack(int steps){

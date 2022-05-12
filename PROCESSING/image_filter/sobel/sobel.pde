@@ -2,6 +2,7 @@ import processing.serial.*;
 import java.io.File;
 
 PImage img;
+PImage filtered;
 int w = 160;
 Serial sPort;
 PrintWriter output;
@@ -27,20 +28,27 @@ void setup() {
   }
   output = createWriter("gantry_instr.txt");
   
-  img = loadImage("bike.jpg");
+  img = loadImage("circle.jpg");
   img.resize(200, 200);
   img.filter(GRAY);
+  image(img, 0, 0);
+  processImage();
+  save("filtered.jpg");
   
-  //processImage();
+  filtered = loadImage("filtered.jpg");
+  image(filtered, 0, 0);
+
   //generateInstr();
   //parseInstr();
 }
 
 void draw() {
-  image(img, 0, 0);
-  processImage();
-
+  //image(img, 0, 0);
   if(val == 0){
+    val++;
+  }
+
+  if(val == 1){
     generateInstr();
     parseInstr();
     val++;
@@ -48,81 +56,81 @@ void draw() {
 }
 
 void generateInstr(){
+  //PImage filtered = loadImage("filtered.jpg");
   final int BLACK = 0;
   final int WHITE = 255;
-  final int X_SPACING = 10;
-  final int Y_SPACING = 10;
+  final int X_SPACING = 5;
+  final int Y_SPACING = 5;
+  int curBlock; //BLACK or WHITE
   int curColor; //BLACK or WHITE
   int colOffset = 0;
   int px = 0;
+  boolean penIsDown = false;
   
-  //output.println("BEGIN DRAWING");
   output.println("STR, DRAW");
-  //sendStr("DRAW");
   
-  for(int i = 0; i < img.height; i++){
+  for(int i = 0; i < filtered.height; i++){
     colOffset = 0;
-    curColor = int(red(img.pixels[img.width*i]));
+    curBlock = colorThresh(int(red(filtered.pixels[filtered.width*i])));
 
-    for(int j = 0; j < img.width; j++){
-      int loc = j + img.width*i;
+    for(int j = 0; j < filtered.width; j++){
+      int loc = j + filtered.width*i;
+      curColor = colorThresh(int(red(filtered.pixels[loc])));
       
-      if(j == img.width - 1){  //end of row
-        px = j - colOffset;
-      
-        if(curColor == WHITE){  //draw
-          //output.println("DRAW " + str(steps));
+      if(j == filtered.width - 1){  //end of row
+        if(curBlock == WHITE){  //draw
+          px = j - colOffset;
           output.println("STR, SLOW");
           output.println("INS, P, D, 0");
           output.println("INS, S, R, " + str(px * X_SPACING));
-          //sendStr("SLOW");
-          //sendInstr('P', 'D', 0);
-          //sendInstr('S', 'R', steps * X_SPACING);
+          penIsDown=true;
+          break;
         }
-        else if(curColor == BLACK){  //skip
+        else if(curBlock == BLACK){  //skip
+          //colOffset = j;
+          if(penIsDown == true){
+             output.println("INS, P, U, 0");
+             penIsDown=false;
+          }
           break;  //no need to draw empty space
         }
       }
     
-      else if(int(red(img.pixels[loc])) != curColor){  //new color block
+      else if(curColor != curBlock){  //new color block
         px = j - colOffset;
         colOffset = j;
 
-        if(curColor == WHITE){  //draw
-          //output.println("DRAW " + str(steps));
-          output.println("STR, SLOW");
-          output.println("INS, P, D, 0");
-          //sendStr("SLOW");
-          //sendInstr('P', 'D', 0);
-          curColor = BLACK;
-        }
-        else if(curColor == BLACK){  //skip
-          //output.println("SKIP " + str(steps));
+
+        if(curBlock == BLACK){  //skip
           output.println("STR, FAST");
           output.println("INS, P, U, 0");
-          //sendStr("FAST");
-          //sendInstr('P', 'U', 0);
-          curColor = WHITE;
+          penIsDown = false;
+          curBlock = WHITE;
+        }
+        else if(curBlock == WHITE){  //draw
+          output.println("STR, SLOW");
+          output.println("INS, P, D, 0");
+          penIsDown = true;
+          curBlock = BLACK;
         }
         output.println("INS, S, R, " + str(px * X_SPACING));
-        //sendInstr('S', 'R', steps * X_SPACING);
       }
      
     }  
     
-    //output.println("NEW ROW");
-    output.println("STR, FAST");
-    output.println("INS, P, U, 0");
-    output.println("INS, S, L, " + str(colOffset * X_SPACING));
+    if(penIsDown == true){
+      output.println("INS, P, U, 0");
+      penIsDown = false;
+    }
+    if(colOffset > 0){
+      output.println("STR, FAST");
+      output.println("INS, S, L, " + str(colOffset * X_SPACING));
+    }
+    
     output.println("INS, S, D, " + str(Y_SPACING));
-    //sendInstr('P', 'U', 0);
-    //sendInstr('S', 'L', colOffset * X_SPACING);
-    //sendInstr('S', 'D', Y_SPACING);
   }
   
-  //output.println("FINISHED DRAWING");
   output.println("STR, DONE");
-  //sendStr("DONE");
   output.close();
 }
 
@@ -228,5 +236,14 @@ void sendStr(String cmd){
       return;
     }
     delay(1);
+  }
+}
+
+int colorThresh(int val){
+  if(val > 128){
+    return 255;
+  }
+  else{
+    return 0;
   }
 }
