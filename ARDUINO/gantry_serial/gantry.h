@@ -1,4 +1,6 @@
 #define MOTOR_STEPS 200 //1.8 deg/step; Each rotation ~2cm
+#define STEPPER_FAST 500 //rpm
+#define STEPPER_SLOW 200 //rpm
 
 //X Motor (+ RIGHT, - LEFT)
 #define X_DIR  3
@@ -10,8 +12,8 @@
 
 //Servo 
 #define SERVO 2
-#define UP    135 //servo angles
-#define DOWN  146
+#define UP    153 //servo angles
+#define DOWN  157
 #define DONE  90
 
 void handlePenInstr(byte buffer[]);
