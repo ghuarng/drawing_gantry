@@ -17,7 +17,7 @@ float[][] kernel_Y = { { -1, -2, -1 },
                        {  1, 2, 1 } };
 
 void setup() {
-  size(200, 200);
+  size(400, 400);
   frameRate(30);
   
   sPort = new Serial(this, "COM5", 9600);
@@ -28,8 +28,8 @@ void setup() {
   }
   output = createWriter("gantry_instr.txt");
   
-  img = loadImage("circle.jpg");
-  img.resize(200, 200);
+  img = loadImage("chungus.png");
+  img.resize(400, 400);
   img.filter(GRAY);
   image(img, 0, 0);
   processImage();

@@ -19,8 +19,8 @@ void setup() {
   Serial.begin(9600);
 
   //Set stepper speed to 200
-  stepperX.begin(STEPPER_SLOW,1);  
-  stepperY.begin(STEPPER_SLOW,1);
+  stepperX.begin(200,1);  
+  stepperY.begin(200,1);
 
   penServo.attach(SERVO);
   Serial.println(int(testBuffer));
@@ -123,13 +123,13 @@ void penUp(){
 void moveX(int steps){
   stepperX.move(steps);
   offsetX += steps;
-  delay(50);
+  delay(1);
 }
 
 void moveY(int steps){
   stepperY.move(steps);
   offsetY += steps;
-  delay(50);
+  delay(1);
 }
 
 void drawBlack(int steps){
@@ -153,6 +153,7 @@ void sendGantryToDraw(){
 
 void sendGantryToOrigin(){
   stepperX.setRPM(200);
+  stepperY.setRPM(200);
   penServo.write(DONE);
   moveX(-offsetX);
   moveY(-offsetY);
