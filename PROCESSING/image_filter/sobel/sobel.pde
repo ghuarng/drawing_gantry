@@ -7,7 +7,6 @@ int w = 160;
 Serial sPort;
 PrintWriter output;
 int val = 0;
-
 float[][] kernel_X = { { -1,  0, 1 },
                        { -2,  0, 2 },
                        { -1,  0, 1 } };
@@ -28,7 +27,7 @@ void setup() {
   }
   output = createWriter("gantry_instr.txt");
   
-  img = loadImage("chungus.png");
+  img = loadImage("illuminati.jpg");
   img.resize(400, 400);
   img.filter(GRAY);
   image(img, 0, 0);
@@ -61,19 +60,18 @@ void generateInstr(){
   final int WHITE = 255;
   final int X_SPACING = 5;
   final int Y_SPACING = 5;
-  int curBlock; //BLACK or WHITE
+  int curBlock = colorThresh(int(red(filtered.pixels[0])));; //BLACK or WHITE
   int curColor; //BLACK or WHITE
   int colOffset = 0;
   int px = 0;
   boolean penIsDown = false;
+  int rowStart = 0;
   
   output.println("STR, DRAW");
   
   for(int i = 0; i < filtered.height; i++){
-    colOffset = 0;
-    curBlock = colorThresh(int(red(filtered.pixels[filtered.width*i])));
-
-    for(int j = 0; j < filtered.width; j++){
+    
+    for(int j = rowStart; j < filtered.width; j++){
       int loc = j + filtered.width*i;
       curColor = colorThresh(int(red(filtered.pixels[loc])));
       
@@ -82,14 +80,13 @@ void generateInstr(){
           px = j - colOffset;
           output.println("STR, SLOW");
           output.println("INS, P, D, 0");
-          output.println("INS, S, R, " + str(px * X_SPACING));
+          output.println("INS, S, R, " + str(px * X_SPACING) + "\tEND ROW");
           penIsDown=true;
           break;
         }
         else if(curBlock == BLACK){  //skip
-          //colOffset = j;
           if(penIsDown == true){
-             output.println("INS, P, U, 0");
+             output.println("INS, P, U, 0  " + "\tEND ROW");
              penIsDown=false;
           }
           break;  //no need to draw empty space
@@ -99,7 +96,6 @@ void generateInstr(){
       else if(curColor != curBlock){  //new color block
         px = j - colOffset;
         colOffset = j;
-
 
         if(curBlock == BLACK){  //skip
           output.println("STR, FAST");
@@ -124,7 +120,26 @@ void generateInstr(){
     }
     if(colOffset > 0){
       output.println("STR, FAST");
-      output.println("INS, S, L, " + str(colOffset * X_SPACING));
+      //output.println("INS, S, L, " + str(colOffset * X_SPACING));
+      
+      if(i < filtered.height-1){
+        rowStart = findFirstWhite(filtered, i+1);
+        
+        if(rowStart == 0){
+          curBlock = BLACK; //skip
+        }
+        else{
+          curBlock = WHITE;
+        }
+        int diff = colOffset - rowStart;
+        if(diff > 0){
+          output.println("INS, S, L, " + str(diff * X_SPACING));
+        }
+        else if(diff < 0){
+          output.println("INS, S, R, " + str(-diff * X_SPACING));
+        }
+        colOffset = rowStart;
+      }
     }
     
     output.println("INS, S, D, " + str(Y_SPACING));
@@ -246,4 +261,19 @@ int colorThresh(int val){
   else{
     return 0;
   }
+}
+
+int findFirstWhite(PImage filtered, int i){
+  int tempLoc;
+  int tempColor;
+  //find first WHITE pixel of next row
+  for(int k = 0; k < filtered.width; k++){ 
+    tempLoc = k + filtered.width*i;
+    tempColor = colorThresh(int(red(filtered.pixels[tempLoc])));
+          
+    if(tempColor > 128){ //white
+      return k;   
+    }
+  }
+  return 0;
 }
