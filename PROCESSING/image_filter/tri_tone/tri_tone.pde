@@ -11,19 +11,11 @@ Serial sPort;
 PrintWriter output;
 int val = 0;
 
-float[][] kernel_X = { { -1,  0, 1 },
-                       { -2,  0, 2 },
-                       { -1,  0, 1 } };
-
-float[][] kernel_Y = { { -1, -2, -1 },
-                       {  0,  0,  0 },
-                       {  1, 2, 1 } };
-
 void setup() {
   size(400, 400);
   frameRate(30);
   
-  sPort = new Serial(this, "COM5", 9600);
+  //sPort = new Serial(this, "COM5", 9600);
   String fileName = dataPath("gantry_instr.txt"); //delete file if exists
   File f = new File(fileName);
   if (f.exists()) {
@@ -32,27 +24,27 @@ void setup() {
   output = createWriter("gantry_instr.txt");
   
   //Main image
-  img = loadImage("man.jpg");
+  img = loadImage("sphere.png");
   img.resize(DIMENSION, DIMENSION);
+  img.filter(POSTERIZE, 3);
   img.filter(GRAY);
   image(img, 0, 0);
-
-  //Processed image
-  processImage(img);
+  
   drawLogo(DIMENSION, 0.3);
+  save("unfiltered.jpg");
+
+  //Processed Image
+  PImage unfiltered = loadImage("unfiltered.jpg");
+  processImage(unfiltered);
   save("filtered.jpg");
   
-  filtered = loadImage("filtered.jpg");
-  filtered.filter(THRESHOLD, THRESH_LVL);
+  //filtered = loadImage("filtered.jpg");
+  //filtered.filter(THRESHOLD, THRESH_LVL);
 
-  image(filtered, 0, 0);
-
-  //generateInstr();
-  //parseInstr();
+  //image(filtered, 0, 0);
 }
 
 void draw() {
-  //image(img, 0, 0);
   if(val == 0){
     val++;
   }
@@ -196,50 +188,20 @@ void processImage(PImage img){
   int ystart = 0;
   int xend = img.width;
   int yend = img.height;
-  int matrixsize = 3;
   
   loadPixels();
   // Begin our loop for every pixel
   for (int x = xstart; x < xend; x++) {
     for (int y = ystart; y < yend; y++ ) {
-      int mag = colorThresh(int(sobelFilter(x,y,kernel_X,kernel_Y,matrixsize,img)));
       int loc = x + y*img.width;
-      color c = color(mag, mag, mag);
+      int rgbVal = colorThresh(int(red(img.pixels[loc])));
+      color c = color(rgbVal, rgbVal, rgbVal); //placeholder
       
       pixels[loc] = c;
     }
   }
 
   updatePixels();
-  img.filter(THRESHOLD, THRESH_LVL);
-
-}
-
-float sobelFilter(int x, int y, float[][] kernel_X, float[][] kernel_Y, int matrixsize, PImage img) {
-  float magX = 0.0;
-  float magY = 0.0;
-  
-  int offset = matrixsize / 2;
-  // Loop through convolution matrix
-  for (int i = 0; i < matrixsize; i++){
-    for (int j= 0; j < matrixsize; j++){
-      // What pixel are we testing
-      int xloc = x+i-offset;
-      int yloc = y+j-offset;
-      int loc = xloc + img.width*yloc;
-      // Make sure we have not walked off the edge of the pixel array
-      loc = constrain(loc,0,img.pixels.length-1);
-      // Calculate the convolution
-      // We sum all the neighboring pixels multiplied by the values in the convolution matrix.
-     
-      magX += red(img.pixels[loc]) * kernel_X[i][j];
-      magY += red(img.pixels[loc]) * kernel_Y[i][j];
-    }
-
-  }
-  
-  float mag = sqrt(sq(magX) + sq(magY));
-  return mag;
 }
 
 void sendInstr(char device, char dir, int steps){
@@ -274,8 +236,11 @@ void sendStr(String cmd){
 }
 
 int colorThresh(int val){
-  if(val > 256 * THRESH_LVL){
+  if(val > 256 * 0.66){
     return 255;
+  }
+  else if(val > 256 * 0.33){
+    return 85;
   }
   else{
     return 0;
@@ -329,7 +294,6 @@ void drawBoundsPaper(){
 void drawLogo(int DIMENSION, float thresh){
   PImage logo = loadImage("dapi.png");
   logo.filter(THRESHOLD, thresh);
-  logo.filter(INVERT);
   
   switch(DIMENSION){
     case(300):
