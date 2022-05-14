@@ -4,7 +4,7 @@ import java.io.File;
 PImage img;
 PImage filtered;
 int w = 160;
-int DIMENSION = 400;
+int DIMENSION = 200;
 int SPACING = 5;
 float THRESH_LVL = 0.5;
 Serial sPort;
@@ -12,10 +12,10 @@ PrintWriter output;
 int val = 0;
 
 void setup() {
-  size(400, 400);
+  size(200, 200);
   frameRate(30);
   
-  //sPort = new Serial(this, "COM5", 9600);
+  sPort = new Serial(this, "COM5", 9600);
   String fileName = dataPath("gantry_instr.txt"); //delete file if exists
   File f = new File(fileName);
   if (f.exists()) {
@@ -24,7 +24,7 @@ void setup() {
   output = createWriter("gantry_instr.txt");
   
   //Main image
-  img = loadImage("sphere.png");
+  img = loadImage("penrose_shaded.png");
   img.resize(DIMENSION, DIMENSION);
   img.filter(POSTERIZE, 3);
   img.filter(GRAY);
@@ -38,10 +38,7 @@ void setup() {
   processImage(unfiltered);
   save("filtered.jpg");
   
-  //filtered = loadImage("filtered.jpg");
-  //filtered.filter(THRESHOLD, THRESH_LVL);
-
-  //image(filtered, 0, 0);
+  filtered = loadImage("filtered.jpg");
 }
 
 void draw() {
@@ -57,25 +54,30 @@ void draw() {
 }
 
 void generateInstr(){
-  //PImage filtered = loadImage("filtered.jpg");
-  final int BLACK = 0;
+  //Draw bounds
+  output.println("STR, DRAW");
+  
+  drawBounds();
+  //drawBoundsPaper();
+  drawGray();
+  //drawBlack();
+  
+  output.println("STR, DONE");
+  output.close();
+}
+
+void drawGray(){
+  final int GRAY = 85;
   final int WHITE = 255;
-  int curBlock = colorThresh(int(red(filtered.pixels[0])));; //BLACK or WHITE
-  int curColor; //BLACK or WHITE
+  int curBlock = colorThresh(int(red(filtered.pixels[0]))); //BLACK, GRAY, WHITE
+  int curColor; //BLACK, GRAY, WHITE
   int colOffset = 0;
   int px = 0;
   boolean penIsDown = false;
   boolean skip = false;
   int rowStart = 0;
   
-  //Draw bounds
-  output.println("STR, DRAW");
-  
-  //drawBounds();
-  drawBoundsPaper();
-  
-  for(int i = 0; i < filtered.height; i++){
-    
+  for(int i = 0; i < filtered.height; i+=5){ //skip some rows
     for(int j = rowStart; j < filtered.width; j++){
       if(skip == true){
         break;
@@ -84,7 +86,7 @@ void generateInstr(){
       curColor = colorThresh(int(red(filtered.pixels[loc])));
       
       if(j == filtered.width - 1){  //end of row
-        if(curBlock == WHITE){  //draw
+        if(curBlock == GRAY){  //draw
           px = j - colOffset;
           output.println("STR, SLOW");
           output.println("INS, P, D, 0");
@@ -92,7 +94,7 @@ void generateInstr(){
           penIsDown=true;
           break;
         }
-        else if(curBlock == BLACK){  //skip
+        else if(curBlock == WHITE){  //skip
           if(penIsDown == true){
              output.println("INS, P, U, 0");
              penIsDown=false;
@@ -105,17 +107,17 @@ void generateInstr(){
         px = j - colOffset;
         colOffset = j;
 
-        if(curBlock == BLACK){  //skip
+        if(curBlock == WHITE){  //skip
           output.println("STR, FAST");
           output.println("INS, P, U, 0");
           penIsDown = false;
-          curBlock = WHITE;
+          curBlock = GRAY;
         }
-        else if(curBlock == WHITE){  //draw
+        else if(curBlock == GRAY){  //draw
           output.println("STR, SLOW");
           output.println("INS, P, D, 0");
           penIsDown = true;
-          curBlock = BLACK;
+          curBlock = WHITE;
         }
         output.println("INS, S, R, " + str(px * SPACING));
       }
@@ -126,19 +128,21 @@ void generateInstr(){
       output.println("INS, P, U, 0");
       penIsDown = false;
     }
+    
+    //Row optimizaiton, skip empty row / leading space
     if(colOffset > 0){
       output.println("STR, FAST");
       //output.println("INS, S, L, " + str(colOffset * X_SPACING));
       
-      if(i < filtered.height-1){
-        rowStart = findFirstWhite(filtered, i+1);
+      if(i < filtered.height-5){
+        rowStart = findFirst(filtered, i+5);
         
         if(rowStart == 0){
-          curBlock = BLACK; //skip
+          curBlock = WHITE; //skip
           skip = true;
         }
         else{
-          curBlock = WHITE;
+          curBlock = GRAY;
           skip = false;
           int diff = colOffset - rowStart;
           if(diff > 0){
@@ -152,13 +156,9 @@ void generateInstr(){
       }
     }
     
-    output.println("INS, S, D, " + str(SPACING));
+    output.println("INS, S, D, " + str(5 * SPACING));
   }
-  
-  output.println("STR, DONE");
-  output.close();
 }
-
 void parseInstr(){
   BufferedReader reader = createReader("gantry_instr.txt");
   String line = null;
@@ -236,10 +236,10 @@ void sendStr(String cmd){
 }
 
 int colorThresh(int val){
-  if(val > 256 * 0.66){
+  if(val > 170){
     return 255;
   }
-  else if(val > 256 * 0.33){
+  else if(val >= 80){
     return 85;
   }
   else{
@@ -247,17 +247,17 @@ int colorThresh(int val){
   }
 }
 
-int findFirstWhite(PImage filtered, int i){
+int findFirst(PImage filtered, int i){
   int tempLoc;
   int tempColor;
-  //find first WHITE pixel of next row
+  //find first DARK pixel of next row
   for(int k = 0; k < filtered.width; k++){ 
     tempLoc = k + filtered.width*i;
     tempColor = colorThresh(int(red(filtered.pixels[tempLoc])));
-          
-    if(tempColor > THRESH_LVL * 256){ //white
+    
+    if(tempColor < 170)
       return k;   
-    }
+
   }
   return 0;
 }
