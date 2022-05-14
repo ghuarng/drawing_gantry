@@ -145,7 +145,7 @@ void drawWhite(int steps){
 }
 
 void sendGantryToDraw(){
-  moveX(-11*MOTOR_STEPS);
+  moveX(-12*MOTOR_STEPS);
   moveY(1*MOTOR_STEPS);
   penServo.write(UP);
   delay(1000);

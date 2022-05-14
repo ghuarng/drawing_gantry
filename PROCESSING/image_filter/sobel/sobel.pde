@@ -4,9 +4,13 @@ import java.io.File;
 PImage img;
 PImage filtered;
 int w = 160;
+int DIMENSION = 400;
+int SPACING = 5;
+float THRESH_LVL = 0.5;
 Serial sPort;
 PrintWriter output;
 int val = 0;
+
 float[][] kernel_X = { { -1,  0, 1 },
                        { -2,  0, 2 },
                        { -1,  0, 1 } };
@@ -27,14 +31,20 @@ void setup() {
   }
   output = createWriter("gantry_instr.txt");
   
-  img = loadImage("illuminati.jpg");
-  img.resize(400, 400);
+  //Main image
+  img = loadImage("blank.jpg");
+  img.resize(DIMENSION, DIMENSION);
   img.filter(GRAY);
   image(img, 0, 0);
-  processImage();
+
+  //Processed image
+  processImage(img);
+  drawLogo(DIMENSION, 0.3);
   save("filtered.jpg");
   
   filtered = loadImage("filtered.jpg");
+  filtered.filter(THRESHOLD, THRESH_LVL);
+
   image(filtered, 0, 0);
 
   //generateInstr();
@@ -58,20 +68,26 @@ void generateInstr(){
   //PImage filtered = loadImage("filtered.jpg");
   final int BLACK = 0;
   final int WHITE = 255;
-  final int X_SPACING = 5;
-  final int Y_SPACING = 5;
   int curBlock = colorThresh(int(red(filtered.pixels[0])));; //BLACK or WHITE
   int curColor; //BLACK or WHITE
   int colOffset = 0;
   int px = 0;
   boolean penIsDown = false;
+  boolean skip = false;
   int rowStart = 0;
   
+  //Draw bounds
   output.println("STR, DRAW");
+  
+  //drawBounds();
+  drawBoundsPaper();
   
   for(int i = 0; i < filtered.height; i++){
     
     for(int j = rowStart; j < filtered.width; j++){
+      if(skip == true){
+        break;
+      }
       int loc = j + filtered.width*i;
       curColor = colorThresh(int(red(filtered.pixels[loc])));
       
@@ -80,13 +96,13 @@ void generateInstr(){
           px = j - colOffset;
           output.println("STR, SLOW");
           output.println("INS, P, D, 0");
-          output.println("INS, S, R, " + str(px * X_SPACING) + "\tEND ROW");
+          output.println("INS, S, R, " + str(px * SPACING));
           penIsDown=true;
           break;
         }
         else if(curBlock == BLACK){  //skip
           if(penIsDown == true){
-             output.println("INS, P, U, 0  " + "\tEND ROW");
+             output.println("INS, P, U, 0");
              penIsDown=false;
           }
           break;  //no need to draw empty space
@@ -109,7 +125,7 @@ void generateInstr(){
           penIsDown = true;
           curBlock = BLACK;
         }
-        output.println("INS, S, R, " + str(px * X_SPACING));
+        output.println("INS, S, R, " + str(px * SPACING));
       }
      
     }  
@@ -127,22 +143,24 @@ void generateInstr(){
         
         if(rowStart == 0){
           curBlock = BLACK; //skip
+          skip = true;
         }
         else{
           curBlock = WHITE;
+          skip = false;
+          int diff = colOffset - rowStart;
+          if(diff > 0){
+            output.println("INS, S, L, " + str(diff * SPACING));
+          }
+          else if(diff < 0){
+            output.println("INS, S, R, " + str(-diff * SPACING));
+          }
+          colOffset = rowStart;
         }
-        int diff = colOffset - rowStart;
-        if(diff > 0){
-          output.println("INS, S, L, " + str(diff * X_SPACING));
-        }
-        else if(diff < 0){
-          output.println("INS, S, R, " + str(-diff * X_SPACING));
-        }
-        colOffset = rowStart;
       }
     }
     
-    output.println("INS, S, D, " + str(Y_SPACING));
+    output.println("INS, S, D, " + str(SPACING));
   }
   
   output.println("STR, DONE");
@@ -173,7 +191,7 @@ void parseInstr(){
   }
 }
 
-void processImage(){
+void processImage(PImage img){
   int xstart = 0;
   int ystart = 0;
   int xend = img.width;
@@ -191,9 +209,10 @@ void processImage(){
       pixels[loc] = c;
     }
   }
-  img.filter(THRESHOLD, 0.5);
 
   updatePixels();
+  img.filter(THRESHOLD, THRESH_LVL);
+
 }
 
 float sobelFilter(int x, int y, float[][] kernel_X, float[][] kernel_Y, int matrixsize, PImage img) {
@@ -255,7 +274,7 @@ void sendStr(String cmd){
 }
 
 int colorThresh(int val){
-  if(val > 128){
+  if(val > 256 * THRESH_LVL){
     return 255;
   }
   else{
@@ -271,9 +290,57 @@ int findFirstWhite(PImage filtered, int i){
     tempLoc = k + filtered.width*i;
     tempColor = colorThresh(int(red(filtered.pixels[tempLoc])));
           
-    if(tempColor > 128){ //white
+    if(tempColor > THRESH_LVL * 256){ //white
       return k;   
     }
   }
   return 0;
+}
+
+void drawBounds(){
+  output.println("INS, P, D, 0");
+  
+  output.println("INS, S, R, " + DIMENSION * SPACING);
+  output.println("INS, S, D, " + DIMENSION * SPACING);
+  output.println("INS, S, L, " + DIMENSION * SPACING);
+  output.println("INS, S, U, " + DIMENSION * SPACING);
+  
+  output.println("INS, P, U, 0");
+}
+
+void drawBoundsPaper(){
+  output.println("INS, P, D, 0");
+  output.println("INS, S, R, " + DIMENSION * SPACING);
+  output.println("INS, S, D, " + DIMENSION * SPACING);
+  
+  output.println("INS, P, U, 0");
+  output.println("INS, S, L, " + DIMENSION * SPACING);
+  output.println("INS, S, U, " + DIMENSION * SPACING);
+  
+  output.println("INS, P, D, 0");
+  output.println("INS, S, D, " + DIMENSION * SPACING);
+  output.println("INS, S, R, " + DIMENSION * SPACING);
+  
+  output.println("INS, P, U, 0");
+  output.println("INS, S, L, " + DIMENSION * SPACING);
+  output.println("INS, S, U, " + DIMENSION * SPACING);
+}
+
+void drawLogo(int DIMENSION, float thresh){
+  PImage logo = loadImage("dapi.png");
+  logo.filter(THRESHOLD, thresh);
+  logo.filter(INVERT);
+  
+  switch(DIMENSION){
+    case(300):
+      logo.resize(80, 80);
+      image(logo, 225, 217);
+      //image(logo, 240, 240);
+      break;
+    case(400):
+      logo.resize(100, 100);
+      image(logo, 307, 295);
+      //image(logo, 310, 310);
+      break;
+  }
 }

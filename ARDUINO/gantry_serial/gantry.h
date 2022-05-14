@@ -12,8 +12,8 @@
 
 //Servo 
 #define SERVO 2
-#define UP    153 //servo angles
-#define DOWN  160
+#define UP    145 //servo angles
+#define DOWN  153
 #define DONE  90
 
 void handlePenInstr(byte buffer[]);
